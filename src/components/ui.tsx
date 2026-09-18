@@ -12,7 +12,11 @@ import {
 
 /* ---------------- bottom sheet ---------------- */
 
-/** How many sheets are open — toasts move out of their way. */
+/**
+ * How many sheets are open — toasts move out of their way. When none is open the
+ * toast still sits above the billing screen's checkout bar (bottom-44), so it never
+ * covers the total or the saved-bill row.
+ */
 let openSheets = 0
 const sheetListeners = new Set<() => void>()
 const subscribeSheets = (fn: () => void) => {
@@ -103,7 +107,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
       {current && (
         <div
           className={`pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4 ${
-            sheetOpen ? 'top-4' : 'bottom-24'
+            sheetOpen ? 'top-4' : 'bottom-44'
           }`}
         >
           <div

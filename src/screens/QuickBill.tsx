@@ -4,6 +4,7 @@ import { db, getSettings } from '../db/db'
 import { commitSale, rateMapFor, setRate, voidSale } from '../db/actions'
 import { NumPad, type PadChip } from '../components/NumPad'
 import { CustomerPicker } from '../components/CustomerPicker'
+import { BillSheet } from '../components/BillSheet'
 import { Sheet, SearchBar, useToast } from '../components/ui'
 import {
   isWeighed,
@@ -53,6 +54,8 @@ export default function QuickBill() {
   const [cartOpen, setCartOpen] = useState(false)
   const [discountPad, setDiscountPad] = useState(false)
   const [splitOpen, setSplitOpen] = useState(false)
+  const [lastSaleId, setLastSaleId] = useState<string | null>(null)
+  const [receiptOpen, setReceiptOpen] = useState(false)
   const { toast } = useToast()
 
   const date = today()
@@ -62,6 +65,10 @@ export default function QuickBill() {
   )
   const rates = useLiveQuery(() => rateMapFor(date), [date])
   const settings = useLiveQuery(() => getSettings(), [])
+  const lastSale = useLiveQuery(
+    async () => (lastSaleId ? ((await db.sales.get(lastSaleId)) ?? null) : null),
+    [lastSaleId],
+  )
 
   const sorted = useMemo(() => {
     const withRate = (i: Item) => ((rates?.get(i.id)?.sell ?? 0) > 0 ? 0 : 1)
@@ -158,6 +165,7 @@ export default function QuickBill() {
     clear()
     setCartOpen(false)
     setSplitOpen(false)
+    setLastSaleId(saleId)
     toast(`Bill #${billNo} · ${money(saved)} saved`, {
       actionLabel: 'Undo',
       action: () => void voidSale(saleId),
@@ -250,18 +258,30 @@ export default function QuickBill() {
 
       {/* Checkout bar — one tap per payment mode, always visible. */}
       <div className="pb-safe fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-slate-200 bg-white px-2 pt-2">
-        <button
-          onClick={() => setCartOpen(true)}
-          disabled={disabled}
-          className="tap-scale mb-2 flex w-full items-center justify-between rounded-2xl bg-slate-100 px-4 py-2 disabled:opacity-60"
-        >
-          <span className="text-[15px] font-semibold text-slate-600">
-            {lines.length === 0
-              ? 'Tap an item to start'
-              : `${lines.length} item${lines.length > 1 ? 's' : ''}${discount ? ` · −${money(discount)}` : ''} ▸`}
-          </span>
-          <span className="text-2xl font-bold tabular-nums">{money(total)}</span>
-        </button>
+        {lines.length === 0 && lastSale && lastSale.deletedAt === null ? (
+          <button
+            onClick={() => setReceiptOpen(true)}
+            className="tap-scale mb-2 flex w-full items-center justify-between rounded-2xl bg-brand-50 px-4 py-2 text-left"
+          >
+            <span className="text-[15px] font-semibold text-brand-800">
+              ✓ Bill #{lastSale.billNo} saved · {money(lastSale.total)}
+            </span>
+            <span className="text-[14px] font-bold text-brand-700">View ›</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setCartOpen(true)}
+            disabled={disabled}
+            className="tap-scale mb-2 flex w-full items-center justify-between rounded-2xl bg-slate-100 px-4 py-2 disabled:opacity-60"
+          >
+            <span className="text-[15px] font-semibold text-slate-600">
+              {lines.length === 0
+                ? 'Tap an item to start'
+                : `${lines.length} item${lines.length > 1 ? 's' : ''}${discount ? ` · −${money(discount)}` : ''} ▸`}
+            </span>
+            <span className="text-2xl font-bold tabular-nums">{money(total)}</span>
+          </button>
+        )}
         <div className="grid grid-cols-4 gap-2">
           <PayButton label="Cash" icon="💵" onClick={payCash} disabled={disabled} primary />
           <PayButton label="UPI" icon="📱" onClick={payUpi} disabled={disabled} />
@@ -363,6 +383,8 @@ export default function QuickBill() {
           setCartOpen(false)
         }}
       />
+
+      <BillSheet sale={receiptOpen ? (lastSale ?? null) : null} onClose={() => setReceiptOpen(false)} />
 
       <SplitSheet
         open={splitOpen}

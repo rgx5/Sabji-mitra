@@ -86,6 +86,26 @@ src/
 scripts/      smoke.mjs
 ```
 
+## Where a bill goes when you tap Cash
+
+Saving is deliberately silent — no confirmation dialog, the cart clears and the pay
+buttons grey out because there is nothing left to charge. The bill itself is written, in
+one transaction, to two tables in this browser's IndexedDB (database `sabji-mitra`):
+`sales` gets the bill header (number, date, totals, how it was paid) and `saleItems` gets
+one row per line with the sell **and** buy rate snapshotted. An udhaar bill also moves the
+customer's balance in the same transaction.
+
+You can see it three ways: the **✓ Bill #N saved · View** row that replaces the total on
+the billing screen, the **Bills** tab, and Day Close. The toast's **Undo** reverses it for
+five seconds; after that, remove it from the receipt.
+
+There is no server — that is the point, the vendor works where the network does not. The
+consequences are worth saying plainly, and Settings → *Where your data is* says them in
+the app: the data belongs to this browser on this phone, another phone or browser sees
+nothing, and clearing browsing data (or a browser set to clear site data on exit) deletes
+it. The app asks the browser for persistent storage on boot so it is not evicted under
+storage pressure; Settings shows whether that was granted and lets you ask again.
+
 Backup/restore is a full JSON dump of every table (Settings → Backup to file). The app
 nags for a fresh backup once a week of billing has gone by without one.
 

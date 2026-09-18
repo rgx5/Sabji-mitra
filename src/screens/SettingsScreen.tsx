@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getSettings, saveSettings } from '../db/db'
 import { addItem, archiveItem, clearLedger, downloadBackup, importBackup, updateItem } from '../db/actions'
 import { Card, Sheet, useToast } from '../components/ui'
+import { bytes, requestPersistentStorage, storageStatus } from '../lib/storage'
 import { Field } from './CustomerDetail'
 import { prettyDate, today, UNIT_LABEL } from '../lib/format'
 import { go } from '../lib/router'
@@ -16,8 +17,28 @@ export default function SettingsScreen() {
   const [shopOpen, setShopOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [storage, setStorage] = useState<Awaited<ReturnType<typeof storageStatus>> | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    void storageStatus().then(setStorage)
+  }, [])
+
+  const counts = useLiveQuery(async () => {
+    const [sales, customers, payments, purchases] = await Promise.all([
+      db.sales.toArray(),
+      db.customers.toArray(),
+      db.payments.toArray(),
+      db.purchases.toArray(),
+    ])
+    return {
+      bills: sales.filter((r) => r.deletedAt === null).length,
+      customers: customers.filter((r) => r.deletedAt === null).length,
+      payments: payments.filter((r) => r.deletedAt === null).length,
+      purchases: purchases.filter((r) => r.deletedAt === null).length,
+    }
+  }, [])
 
   const onExport = async () => {
     const name = await downloadBackup()
@@ -55,6 +76,44 @@ export default function SettingsScreen() {
       </Card>
 
       <Card className="mb-3">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <p className="text-[16px] font-semibold">📍 Where your data is</p>
+          <p className="mt-1 text-[14px] text-slate-500">
+            On this phone only, inside this browser's storage. Nothing is sent to a server, so
+            it works with no network — and a different phone or browser sees different data.
+          </p>
+          <p className="mt-2 text-[14px] text-slate-600">
+            {counts
+              ? `${counts.bills} bills · ${counts.customers} customers · ${counts.payments} payments · ${counts.purchases} purchases`
+              : '…'}
+            {storage?.supported ? ` · ${bytes(storage.usage)} used` : ''}
+          </p>
+          {storage && (
+            <button
+              onClick={async () => {
+                const ok = await requestPersistentStorage()
+                setStorage(await storageStatus())
+                toast(
+                  ok
+                    ? 'Protected — the browser will not auto-clear it'
+                    : 'Browser would not protect it — keep exporting backups',
+                  { tone: ok ? 'ok' : 'warn' },
+                )
+              }}
+              className={`tap-scale mt-2 w-full rounded-2xl text-[15px] font-bold ${
+                storage.persisted ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-800'
+              }`}
+            >
+              {storage.persisted
+                ? '🔒 Protected from auto-cleanup'
+                : '⚠️ Not protected — tap to protect'}
+            </button>
+          )}
+          <p className="mt-2 text-[13px] text-slate-500">
+            Clearing browsing data, or a browser set to clear site data on exit, deletes it.
+            Export a backup after a busy day.
+          </p>
+        </div>
         <Row label="⬇️ Backup to file" hint={`Last backup: ${lastBackup}`} onClick={() => void onExport()} />
         <Row label="⬆️ Restore from file" hint="Replaces everything on this device" onClick={() => fileRef.current?.click()} />
         <input

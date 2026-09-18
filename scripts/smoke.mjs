@@ -94,7 +94,8 @@ await step('one tap on Cash saves and clears the bill', async () => {
   await page.waitForTimeout(700)
   const t = await body()
   if (!t.includes('Bill #1')) throw new Error('no bill #1 toast')
-  if (!t.includes('Tap an item to start')) throw new Error('cart did not clear')
+  if (!/✓ Bill #1 saved/.test(t)) throw new Error('bill not confirmed on the bar: ' + t.slice(0, 300))
+  if (t.includes('1 item ▸')) throw new Error('cart did not clear')
 })
 
 await page.screenshot({ path: `${SHOT}/03-after-cash.png` })
@@ -299,6 +300,34 @@ await step('the new khata customer carries the phone', async () => {
     throw new Error('customer or phone missing in khata: ' + t.slice(0, 500))
   }
 })
+
+
+await step('saved bill stays visible on the billing screen', async () => {
+  await page.goto(BASE + '#/bill')
+  await page.waitForTimeout(600)
+  await page.getByRole('button', { name: 'Tomato', exact: true }).click()
+  await pad().getByRole('button', { name: '1 kg', exact: true }).click()
+  await page.waitForTimeout(300)
+  await page.getByRole('button', { name: 'Cash' }).click()
+  await page.waitForTimeout(800)
+  const t = await body()
+  if (!/✓ Bill #\d+ saved/.test(t)) throw new Error('no saved-bill confirmation on the bar: ' + t.slice(0, 300))
+  await page.getByRole('button', { name: /✓ Bill #\d+ saved/ }).click()
+  await page.waitForSelector('text=1 kg × ₹30/kg')
+  await page.keyboard.press('Escape')
+})
+
+await page.screenshot({ path: `${SHOT}/13-saved-bill.png` })
+
+await step('settings explains where the data lives', async () => {
+  await page.goto(BASE + '#/more')
+  await page.waitForTimeout(700)
+  const t = await body()
+  if (!t.includes('Where your data is')) throw new Error('no storage explainer')
+  if (!/\d+ bills · \d+ customers/.test(t)) throw new Error('no record counts: ' + t.slice(0, 400))
+})
+
+await page.screenshot({ path: `${SHOT}/14-storage.png` })
 
 await browser.close()
 console.log(errors.length ? `\nFAILURES (${errors.length}): ${errors.join(', ')}` : '\nALL GREEN')
