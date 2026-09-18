@@ -22,6 +22,16 @@ npm run build && npm run preview -- --port 4321 &
 npm run smoke          # CHROME_PATH=... to pin a browser binary
 ```
 
+## One nav
+
+There is exactly one navigation control in the app: the six-tab bar at the bottom of
+every screen, billing included. A screen that needs its own controls — the billing
+screen's total and Cash / UPI / Udhaar / Split row — renders them through `ActionBar`,
+which portals into the same fixed bottom stack directly above the tabs. The stack's
+height is measured into `--bottom-stack`, so page padding and toasts position themselves
+against whatever is actually there instead of a hardcoded offset. No screen places a
+second fixed bar, and no screen carries a button that duplicates a tab.
+
 ## One or two taps, everywhere
 
 The billing path is the product. Every action below is counted from the screen you are
@@ -29,6 +39,7 @@ already on; nothing on this list opens a confirmation dialog.
 
 | Action | Taps |
 |---|---|
+| Move between screens | 1 — the tab bar, same on every screen |
 | Price the whole board from yesterday | 1 — **Copy previous rates** |
 | Set one rate | 2 — cell, then a chip (`Same as before`, `+20%`) |
 | Price a full item (buy → sell) | cell → **Next** → **Save**, the pad walks the fields |

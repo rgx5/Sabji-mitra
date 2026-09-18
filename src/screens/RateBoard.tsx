@@ -14,7 +14,6 @@ import {
   toPaise,
   UNIT_LABEL,
 } from '../lib/format'
-import { go } from '../lib/router'
 
 type Field = 'buy' | 'sell'
 
@@ -123,20 +122,12 @@ export default function RateBoard() {
             ›
           </button>
         </div>
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={onCopyYesterday}
-            className="tap-scale flex-1 rounded-2xl bg-white text-[16px] font-bold text-brand-700 shadow-sm"
-          >
-            ⧉ Copy {prevDate ? prettyDate(prevDate).toLowerCase() : 'previous'} rates
-          </button>
-          <button
-            onClick={() => go('bill')}
-            className="tap-scale rounded-2xl bg-brand-600 px-4 text-[16px] font-bold text-white"
-          >
-            Bill →
-          </button>
-        </div>
+        <button
+          onClick={onCopyYesterday}
+          className="tap-scale mt-3 w-full rounded-2xl bg-white text-[16px] font-bold text-brand-700 shadow-sm"
+        >
+          ⧉ Copy {prevDate ? prettyDate(prevDate).toLowerCase() : 'previous'} rates
+        </button>
       </header>
 
       <div className="px-3 pt-3">

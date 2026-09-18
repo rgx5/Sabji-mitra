@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import {
   createContext,
   useCallback,
@@ -13,9 +14,8 @@ import {
 /* ---------------- bottom sheet ---------------- */
 
 /**
- * How many sheets are open — toasts move out of their way. When none is open the
- * toast still sits above the billing screen's checkout bar (bottom-44), so it never
- * covers the total or the saved-bill row.
+ * How many sheets are open — toasts move out of their way. With none open the toast
+ * sits just above the bottom stack, whatever that screen's action bar makes it.
  */
 let openSheets = 0
 const sheetListeners = new Set<() => void>()
@@ -107,8 +107,9 @@ export function ToastHost({ children }: { children: ReactNode }) {
       {current && (
         <div
           className={`pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4 ${
-            sheetOpen ? 'top-4' : 'bottom-44'
+            sheetOpen ? 'top-4' : ''
           }`}
+          style={sheetOpen ? undefined : { bottom: 'calc(var(--bottom-stack, 72px) + 12px)' }}
         >
           <div
             className={`animate-toast pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-3 text-white shadow-xl ${
@@ -132,6 +133,19 @@ export function ToastHost({ children }: { children: ReactNode }) {
       )}
     </ToastCtx.Provider>
   )
+}
+
+/* ---------------- the current screen's action bar ---------------- */
+
+/**
+ * Renders a screen's own controls directly above the tab bar, inside the same
+ * bottom stack. One nav, one stack — screens never place a second fixed bar.
+ */
+export function ActionBar({ children }: { children: ReactNode }) {
+  const [host, setHost] = useState<HTMLElement | null>(null)
+  useEffect(() => setHost(document.getElementById('action-bar')), [])
+  if (!host) return null
+  return createPortal(<div className="px-2 pt-2 pb-1">{children}</div>, host)
 }
 
 /* ---------------- small primitives ---------------- */

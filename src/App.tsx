@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ToastHost } from './components/ui'
 import { go, useRoute } from './lib/router'
@@ -21,9 +21,13 @@ const TABS = [
   { key: 'more', label: 'More', icon: '⚙️' },
 ] as const
 
+/** The id the current screen's action bar portals into — see ActionBar in ui.tsx. */
+export const ACTION_BAR_ID = 'action-bar'
+
 export default function App() {
   const route = useRoute()
   const head = route.parts[0] ?? 'bill'
+  const stackRef = useRef<HTMLDivElement>(null)
 
   // First run lands on the rate board: billing needs today's sell rates.
   useEffect(() => {
@@ -32,6 +36,21 @@ export default function App() {
       const count = await db.dailyRates.count()
       go(count === 0 ? 'rates' : 'bill')
     })()
+  }, [])
+
+  /**
+   * One bottom stack — a screen's action bar plus the tab bar. Its measured height
+   * drives page padding and toast placement, so nothing has to guess an offset.
+   */
+  useEffect(() => {
+    const el = stackRef.current
+    if (!el) return
+    const apply = () =>
+      document.documentElement.style.setProperty('--bottom-stack', `${el.offsetHeight}px`)
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [])
 
   const screen = (() => {
@@ -53,15 +72,20 @@ export default function App() {
     }
   })()
 
-  const hideNav = head === 'bill' // the bill screen owns the bottom bar
-
   return (
     <ToastHost>
       <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-slate-100">
         <BackupNudge />
-        <main className={`flex-1 ${hideNav ? '' : 'pb-24'}`}>{screen}</main>
-        {!hideNav && (
-          <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-around border-t border-slate-200 bg-white">
+        <main className="flex-1" style={{ paddingBottom: 'var(--bottom-stack, 72px)' }}>
+          {screen}
+        </main>
+
+        <div
+          ref={stackRef}
+          className="pb-safe fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md bg-white shadow-[0_-2px_12px_rgba(15,23,42,0.08)]"
+        >
+          <div id={ACTION_BAR_ID} />
+          <nav className="flex justify-around border-t border-slate-100">
             {TABS.map((t) => {
               const active = t.key === head || (t.key === 'bills' && head === 'purchase')
               return (
@@ -72,13 +96,15 @@ export default function App() {
                     active ? 'text-brand-700' : 'text-slate-400'
                   }`}
                 >
-                  <span className="text-xl">{t.icon}</span>
-                  {t.label}
+                  <span className="text-xl leading-none" aria-hidden>
+                    {t.icon}
+                  </span>
+                  <span>{t.label}</span>
                 </button>
               )
             })}
           </nav>
-        )}
+        </div>
       </div>
     </ToastHost>
   )
@@ -89,7 +115,10 @@ const WEEK = 7 * 24 * 60 * 60 * 1000
 function BackupNudge() {
   const settings = useLiveQuery(() => getSettings(), [])
   // Nag only once there is a week of unsaved work — never on a fresh install.
-  const firstSaleAt = useLiveQuery(async () => (await db.sales.orderBy('createdAt').first())?.createdAt ?? 0, [])
+  const firstSaleAt = useLiveQuery(
+    async () => (await db.sales.orderBy('createdAt').first())?.createdAt ?? 0,
+    [],
+  )
   if (!settings || !firstSaleAt) return null
   const since = settings.lastBackupAt ?? firstSaleAt
   if (since > Date.now() - WEEK) return null

@@ -18,7 +18,6 @@ import {
   toQty,
   UNIT_LABEL,
 } from '../lib/format'
-import { go } from '../lib/router'
 import type { Item, Unit } from '../db/types'
 
 interface Line {
@@ -234,12 +233,7 @@ export default function PurchaseEntry() {
         >
           Save purchase
         </button>
-        <button
-          onClick={() => go('day')}
-          className="tap-scale mt-2 w-full rounded-2xl bg-white text-[16px] font-bold text-slate-600"
-        >
-          Day summary →
-        </button>
+
       </div>
 
       <ItemPicker

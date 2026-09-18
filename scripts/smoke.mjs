@@ -64,9 +64,18 @@ await step('margin percent is computed on the board', async () => {
 
 await page.screenshot({ path: `${SHOT}/01-rates.png` })
 
-await step('rate board reaches billing in one tap', async () => {
-  await page.getByRole('button', { name: 'Bill →' }).click()
+await step('the tab bar is the only way between screens', async () => {
+  const navs = await page.locator('nav').count()
+  if (navs !== 1) throw new Error(`expected one nav, found ${navs}`)
+  await page.locator('nav').getByText('Bill', { exact: true }).click()
   await page.waitForSelector('text=Tap an item to start')
+  const onBill = await page.locator('nav').count()
+  if (onBill !== 1) throw new Error(`billing screen has ${onBill} navs`)
+  for (const label of ['Bill', 'Rates', 'Bills', 'Khata', 'Day', 'More']) {
+    if ((await page.locator('nav').getByText(label, { exact: true }).count()) !== 1) {
+      throw new Error(`tab ${label} missing on the billing screen`)
+    }
+  }
 })
 
 await step('two taps add 1 kg of tomato', async () => {

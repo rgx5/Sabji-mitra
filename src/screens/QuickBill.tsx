@@ -5,7 +5,7 @@ import { commitSale, rateMapFor, setRate, voidSale } from '../db/actions'
 import { NumPad, type PadChip } from '../components/NumPad'
 import { CustomerPicker } from '../components/CustomerPicker'
 import { BillSheet } from '../components/BillSheet'
-import { Sheet, SearchBar, useToast } from '../components/ui'
+import { ActionBar, Sheet, SearchBar, useToast } from '../components/ui'
 import {
   isWeighed,
   lineTotal,
@@ -17,7 +17,6 @@ import {
   today,
   UNIT_LABEL,
 } from '../lib/format'
-import { go } from '../lib/router'
 import type { CartLine, Customer, Item, PaymentMode, Unit } from '../db/types'
 
 const qtyChips = (unit: Unit): PadChip[] =>
@@ -198,13 +197,7 @@ export default function QuickBill() {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 bg-brand-700 px-3 pt-3 pb-2 text-white">
         <div className="mb-2 flex items-center gap-2">
-          <button
-            onClick={() => go('rates')}
-            className="tap-scale min-h-10 rounded-xl bg-brand-600 px-3 text-[13px] font-bold"
-          >
-            📋 Rates
-          </button>
-          <p className="min-w-0 flex-1 truncate text-center text-[15px] font-bold">
+          <p className="min-w-0 flex-1 truncate text-[15px] font-bold">
             {settings?.shopName ?? 'Sabji Mitra'}
           </p>
           <button
@@ -217,7 +210,7 @@ export default function QuickBill() {
         <SearchBar value={query} onChange={setQuery} placeholder="Find item / वस्तू शोधा" />
       </header>
 
-      <div className="grid flex-1 grid-cols-3 content-start gap-2 p-2 pb-44">
+      <div className="grid flex-1 grid-cols-3 content-start gap-2 p-2">
         {visible.map((item) => {
           const sell = rates?.get(item.id)?.sell ?? 0
           const inCart = qtyInCart(item.id)
@@ -256,8 +249,8 @@ export default function QuickBill() {
         )}
       </div>
 
-      {/* Checkout bar — one tap per payment mode, always visible. */}
-      <div className="pb-safe fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-slate-200 bg-white px-2 pt-2">
+      {/* Checkout bar — the screen's own controls, sitting above the one tab bar. */}
+      <ActionBar>
         {lines.length === 0 && lastSale && lastSale.deletedAt === null ? (
           <button
             onClick={() => setReceiptOpen(true)}
@@ -288,23 +281,7 @@ export default function QuickBill() {
           <PayButton label="Udhaar" icon="📒" onClick={payCredit} disabled={disabled} />
           <PayButton label="Split" icon="⋯" onClick={() => setSplitOpen(true)} disabled={disabled} />
         </div>
-        <nav className="flex justify-around pt-1">
-          {[
-            ['bills', 'Bills'],
-            ['khata', 'Khata'],
-            ['day', 'Day'],
-            ['more', 'More'],
-          ].map(([path, label]) => (
-            <button
-              key={path}
-              onClick={() => go(path)}
-              className="min-h-9 px-3 text-[12px] font-semibold text-slate-400"
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      </ActionBar>
 
       {/* qty keypad */}
       <NumPad
