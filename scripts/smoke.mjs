@@ -185,6 +185,121 @@ await step('reload keeps the data (offline-first)', async () => {
   if (!(await body()).includes('₹110.00')) throw new Error('data lost after reload')
 })
 
+
+await step('new customer captures name and phone', async () => {
+  await page.goto(BASE + '#/khata')
+  await page.waitForTimeout(500)
+  await page.getByRole('button', { name: '＋ New' }).click()
+  await page.waitForSelector('text=New customer')
+  await page.getByPlaceholder('Ramesh Hotel').fill('Sunita Mess')
+  await page.getByPlaceholder('98xxxxxxxx').fill('9876500011')
+  await page.getByPlaceholder('Shop 4, Market Road').fill('Lane 3, Mandai')
+  await page.getByPlaceholder('5000').fill('2000')
+  await page.getByRole('button', { name: 'Add customer' }).click()
+  await page.waitForTimeout(800)
+  const t = await body()
+  if (!t.includes('Sunita Mess')) throw new Error('customer not created')
+  if (!t.includes('9876500011')) throw new Error('phone not saved: ' + t.slice(0, 300))
+  if (!t.includes('Lane 3, Mandai')) throw new Error('address not saved')
+  if (!t.includes('Limit ₹2000.00')) throw new Error('credit limit not saved: ' + t.slice(0, 400))
+})
+
+await page.screenshot({ path: `${SHOT}/09-customer.png` })
+
+await step('editing a customer keeps the details', async () => {
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.waitForSelector('text=Edit customer')
+  await page
+    .getByPlaceholder('98xxxxxxxx')
+    .and(page.locator('input[value="9876500011"], input'))
+    .first()
+    .waitFor()
+  await page.waitForFunction(
+    () =>
+      document.querySelector('input[placeholder="98xxxxxxxx"]') instanceof HTMLInputElement &&
+      document.querySelector('input[placeholder="98xxxxxxxx"]').value.length > 0,
+  )
+  const phone = await page.getByPlaceholder('98xxxxxxxx').inputValue()
+  if (phone !== '9876500011') throw new Error('edit form did not load the phone: ' + phone)
+  await page.getByPlaceholder('98xxxxxxxx').fill('9876500022')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await page.waitForTimeout(700)
+  if (!(await body()).includes('9876500022')) throw new Error('phone edit not saved')
+})
+
+await step('bills list shows every bill', async () => {
+  await page.goto(BASE + '#/bills')
+  await page.waitForTimeout(700)
+  const t = await body()
+  if (!t.includes('#1') || !t.includes('#2')) throw new Error('bills missing from the list: ' + t.slice(0, 500))
+  if (!t.includes('₹110.00')) throw new Error('bills total wrong: ' + t.slice(0, 500))
+})
+
+await page.screenshot({ path: `${SHOT}/10-bills.png` })
+
+await step('a bill opens its full receipt', async () => {
+  await page.getByRole('button').filter({ hasText: '#2' }).first().click()
+  await page.waitForSelector('text=Bill #2')
+  await page.waitForSelector('text=2 kg × ₹30/kg')
+  const t = await body()
+  if (!t.includes('Tomato')) throw new Error('receipt has no items: ' + t.slice(0, 400))
+  if (!t.includes('Ramesh Hotel')) throw new Error('receipt does not name the customer')
+  if (!t.includes('📒 Udhaar')) throw new Error('receipt does not break out the payment')
+})
+
+await page.screenshot({ path: `${SHOT}/11-receipt.png` })
+
+await step('bill search finds by customer name', async () => {
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+  await page.getByPlaceholder('Bill no. or customer').fill('Ramesh')
+  await page.waitForTimeout(400)
+  const t = await body()
+  if (!t.includes('#2')) throw new Error('search lost the matching bill')
+  if (t.includes('#1 ·') || /#1\n/.test(t)) throw new Error('search kept a non-matching bill')
+  await page.getByPlaceholder('Bill no. or customer').fill('')
+})
+
+await step('purchases tab lists saved purchases', async () => {
+  await page.getByRole('button', { name: '🚚 Purchases' }).click()
+  await page.waitForTimeout(500)
+  const t = await body()
+  if (!t.includes('₹200.00')) throw new Error('purchase missing: ' + t.slice(0, 500))
+  await page.getByRole('button').filter({ hasText: 'Mandi purchase' }).first().click()
+  await page.waitForTimeout(400)
+  if (!(await body()).includes('Tomato')) throw new Error('purchase receipt has no lines')
+  await page.keyboard.press('Escape')
+})
+
+await page.screenshot({ path: `${SHOT}/12-purchases.png` })
+
+await step('udhaar picker can add a customer with phone', async () => {
+  await page.goto(BASE + '#/bill')
+  await page.waitForTimeout(600)
+  await page.getByRole('button', { name: 'Tomato', exact: true }).click()
+  await pad().getByRole('button', { name: '1 kg', exact: true }).click()
+  await page.waitForTimeout(300)
+  await page.getByRole('button', { name: 'Udhaar' }).click()
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: /New customer with phone/ }).click()
+  await page.waitForSelector('text=New customer')
+  await page.getByPlaceholder('Ramesh Hotel').fill('Kirana Corner')
+  await page.getByPlaceholder('98xxxxxxxx').fill('9800011122')
+  await page.getByRole('button', { name: 'Add customer' }).click()
+  await page.waitForTimeout(900)
+  const t = await body()
+  if (!t.includes('Bill #3')) throw new Error('bill not saved through the details path: ' + t.slice(0, 400))
+})
+
+await step('the new khata customer carries the phone', async () => {
+  await page.goto(BASE + '#/khata')
+  await page.waitForTimeout(700)
+  const t = await body()
+  if (!t.includes('Kirana Corner') || !t.includes('9800011122')) {
+    throw new Error('customer or phone missing in khata: ' + t.slice(0, 500))
+  }
+})
+
 await browser.close()
 console.log(errors.length ? `\nFAILURES (${errors.length}): ${errors.join(', ')}` : '\nALL GREEN')
 process.exit(errors.length ? 1 : 0)

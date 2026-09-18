@@ -113,10 +113,13 @@ export async function archiveItem(id: string): Promise<void> {
 
 /* ---------------- customers ---------------- */
 
-export async function addCustomer(name: string, phone?: string): Promise<Customer> {
+export async function addCustomer(
+  input: string | Pick<Customer, 'name'> & Partial<Pick<Customer, 'phone' | 'address' | 'creditLimit' | 'notes'>>,
+): Promise<Customer> {
+  const details = typeof input === 'string' ? { name: input } : input
   const row = stamp({
-    name: name.trim(),
-    phone: phone?.trim() || undefined,
+    ...details,
+    name: details.name.trim(),
     balance: 0,
     lastSaleAt: 0,
   }) as Customer
@@ -305,6 +308,25 @@ export async function addSupplier(name: string, phone?: string): Promise<string>
   const row = stamp({ name: name.trim(), phone: phone?.trim() || undefined, balance: 0 })
   await db.suppliers.add(row)
   return row.id
+}
+
+export async function updateSupplier(id: string, patch: { name?: string; phone?: string }): Promise<void> {
+  await db.suppliers.update(id, { ...patch, updatedAt: now() })
+}
+
+/** Soft-deletes a purchase and reverses its effect on the supplier balance. */
+export async function voidPurchase(purchaseId: string): Promise<void> {
+  await db.transaction('rw', [db.purchases, db.purchaseItems, db.suppliers], async () => {
+    const purchase = await db.purchases.get(purchaseId)
+    if (!purchase || purchase.deletedAt !== null) return
+    await db.purchases.update(purchaseId, { deletedAt: now(), updatedAt: now() })
+    const lines = await db.purchaseItems.where('purchaseId').equals(purchaseId).toArray()
+    for (const l of lines) await db.purchaseItems.update(l.id, { deletedAt: now(), updatedAt: now() })
+    if (purchase.supplierId && purchase.dueAmount > 0) {
+      const s = await db.suppliers.get(purchase.supplierId)
+      if (s) await db.suppliers.update(s.id, { balance: s.balance - purchase.dueAmount, updatedAt: now() })
+    }
+  })
 }
 
 /* ---------------- expenses (light, used by day close) ---------------- */

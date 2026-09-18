@@ -40,10 +40,25 @@ already on; nothing on this list opens a confirmation dialog.
 | Collect a full khata balance | 2 — **₹ Collect**, then **💵 Cash** (pre-filled amount) |
 | Undo a saved bill | 1 — **Undo** on the toast (5 s) |
 | Add a purchase line | 2 — item tile, then a qty chip (rate is remembered) |
+| See every bill ever saved | 1 — the **Bills** tab |
+| Open a bill's full receipt | 2 — Bills tab, then the bill |
+| Add a customer with phone & address | 2 — Khata **＋ New**, then fill and save |
 | Back up everything | 1 — **Backup to file** |
 
 Items with no rate for today are not dead ends: tapping one asks for the sell rate, then
 drops straight into the weight pad.
+
+Fast does not mean partial. Every record can be opened and completed afterwards:
+
+- **Bills tab** — every bill and every purchase, filtered by Today / Last 7 days / All,
+  searchable by bill number, customer or supplier. Tapping one opens the full receipt:
+  each line with quantity and rate, discount, total, the cash / UPI / udhaar split, the
+  customer (tap through to their khata), and Remove.
+- **Customers** — name, phone, address, credit limit and a note, captured when you add
+  them and editable any time from the customer's page. The fast path in billing still
+  creates from just a name; **New customer with phone & details** in the same picker opens
+  the full form when you want it.
+- **Suppliers** — name and phone, addable and editable from the purchase screen.
 
 ## Design rules held to
 
@@ -66,8 +81,8 @@ drops straight into the weight pad.
 src/
   db/         types.ts · db.ts (Dexie schema) · seed.ts (50 vegetables) · actions.ts
   lib/        format.ts (paise/gram math, dates) · router.ts (hash router)
-  components/ NumPad.tsx · CustomerPicker.tsx · ui.tsx (sheet, toast, primitives)
-  screens/    RateBoard · QuickBill · Khata · CustomerDetail · PurchaseEntry · DayClose · SettingsScreen
+  components/ NumPad · CustomerPicker · CustomerForm · BillSheet · ui (sheet, toast, primitives)
+  screens/    RateBoard · QuickBill · Bills · Khata · CustomerDetail · PurchaseEntry · DayClose · SettingsScreen
 scripts/      smoke.mjs
 ```
 

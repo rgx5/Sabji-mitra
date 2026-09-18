@@ -6,10 +6,29 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react'
 
 /* ---------------- bottom sheet ---------------- */
+
+/** How many sheets are open — toasts move out of their way. */
+let openSheets = 0
+const sheetListeners = new Set<() => void>()
+const subscribeSheets = (fn: () => void) => {
+  sheetListeners.add(fn)
+  return () => sheetListeners.delete(fn)
+}
+const setSheetCount = (delta: number) => {
+  openSheets = Math.max(0, openSheets + delta)
+  sheetListeners.forEach((fn) => fn())
+}
+export const useSheetOpen = (): boolean =>
+  useSyncExternalStore(
+    subscribeSheets,
+    () => openSheets > 0,
+    () => false,
+  )
 
 export function Sheet({
   open,
@@ -26,7 +45,11 @@ export function Sheet({
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    setSheetCount(1)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      setSheetCount(-1)
+    }
   }, [open, onClose])
 
   if (!open) return null
@@ -63,6 +86,7 @@ export const useToast = () => useContext(ToastCtx)
 
 export function ToastHost({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState<ToastState | null>(null)
+  const sheetOpen = useSheetOpen()
   const timer = useRef<number | undefined>(undefined)
 
   const toast = useCallback<ToastApi['toast']>((message, opts) => {
@@ -77,7 +101,11 @@ export function ToastHost({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={api}>
       {children}
       {current && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4">
+        <div
+          className={`pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4 ${
+            sheetOpen ? 'top-4' : 'bottom-24'
+          }`}
+        >
           <div
             className={`animate-toast pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-3 text-white shadow-xl ${
               current.tone === 'warn' ? 'bg-amber-600' : 'bg-slate-900'

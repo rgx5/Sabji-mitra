@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { addCustomer } from '../db/actions'
+import { CustomerForm } from './CustomerForm'
 import { Sheet, SearchBar } from './ui'
 import { money } from '../lib/format'
 import type { Customer } from '../db/types'
@@ -22,6 +23,7 @@ export function CustomerPicker({
   onClose: () => void
 }) {
   const [query, setQuery] = useState('')
+  const [formOpen, setFormOpen] = useState(false)
   const customers = useLiveQuery(
     async () => (await db.customers.toArray()).filter((c) => c.deletedAt === null),
     [],
@@ -48,7 +50,8 @@ export function CustomerPicker({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} label={title}>
+    <>
+    <Sheet open={open && !formOpen} onClose={onClose} label={title}>
       <div className="pb-safe px-3 pt-3" style={{ ['--pb' as string]: '12px' }}>
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xl font-bold">{title}</p>
@@ -68,6 +71,13 @@ export function CustomerPicker({
               <span className="text-[17px] font-bold">Add “{query.trim()}” &amp; continue</span>
             </button>
           )}
+          <button
+            onClick={() => setFormOpen(true)}
+            className="tap-scale mb-2 flex w-full items-center gap-3 rounded-2xl border border-dashed border-slate-300 px-4 py-3 text-left text-slate-600"
+          >
+            <span className="text-2xl">👤</span>
+            <span className="text-[16px] font-bold">New customer with phone &amp; details</span>
+          </button>
           {list.map((c) => (
             <button
               key={c.id}
@@ -93,5 +103,17 @@ export function CustomerPicker({
         </div>
       </div>
     </Sheet>
+
+    <CustomerForm
+      open={formOpen}
+      initialName={query.trim()}
+      onClose={() => setFormOpen(false)}
+      onSaved={(c) => {
+        setFormOpen(false)
+        setQuery('')
+        onPick(c)
+      }}
+    />
+    </>
   )
 }

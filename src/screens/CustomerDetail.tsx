@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { collectPayment, updateCustomer, voidPayment, voidSale } from '../db/actions'
+import { collectPayment, voidPayment, voidSale } from '../db/actions'
 import { CollectPad } from './Khata'
+import { CustomerForm } from '../components/CustomerForm'
 import { Sheet, useToast } from '../components/ui'
 import { clockTime, money, prettyDate, qtyLabel, moneyShort, toPaise } from '../lib/format'
 import { back } from '../lib/router'
-import type { Customer, SaleItem } from '../db/types'
+import type { SaleItem } from '../db/types'
 
 type Entry = {
   id: string
@@ -102,7 +103,10 @@ export default function CustomerDetail({ customerId }: { customerId: string }) {
           </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-lg font-bold">{customer.name}</p>
-            <p className="text-[13px] text-brand-100">{customer.phone ?? 'No phone'}</p>
+            <p className="truncate text-[13px] text-brand-100">
+              {customer.phone ?? 'No phone — tap Edit'}
+              {customer.address ? ` · ${customer.address}` : ''}
+            </p>
           </div>
           <button
             onClick={() => setEditOpen(true)}
@@ -206,7 +210,7 @@ export default function CustomerDetail({ customerId }: { customerId: string }) {
         )}
       </Sheet>
 
-      <EditCustomerSheet
+      <CustomerForm
         open={editOpen}
         customer={customer}
         onClose={() => setEditOpen(false)}
@@ -216,51 +220,6 @@ export default function CustomerDetail({ customerId }: { customerId: string }) {
         }}
       />
     </div>
-  )
-}
-
-function EditCustomerSheet({
-  open,
-  customer,
-  onClose,
-  onSaved,
-}: {
-  open: boolean
-  customer: Customer
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const [name, setName] = useState(customer.name)
-  const [phone, setPhone] = useState(customer.phone ?? '')
-  const [limit, setLimit] = useState(customer.creditLimit ? String(customer.creditLimit / 100) : '')
-  const [notes, setNotes] = useState(customer.notes ?? '')
-
-  const save = async () => {
-    await updateCustomer(customer.id, {
-      name: name.trim() || customer.name,
-      phone: phone.trim() || undefined,
-      creditLimit: limit ? toPaise(limit) : undefined,
-      notes: notes.trim() || undefined,
-    })
-    onSaved()
-  }
-
-  return (
-    <Sheet open={open} onClose={onClose} label="Edit customer">
-      <div className="pb-safe space-y-2 px-4 pt-4" style={{ ['--pb' as string]: '12px' }}>
-        <p className="text-xl font-bold">Edit customer</p>
-        <Field label="Name" value={name} onChange={setName} />
-        <Field label="Phone" value={phone} onChange={setPhone} type="tel" />
-        <Field label="Credit limit (₹)" value={limit} onChange={setLimit} type="number" />
-        <Field label="Note" value={notes} onChange={setNotes} />
-        <button
-          onClick={() => void save()}
-          className="tap-scale mt-2 w-full rounded-2xl bg-brand-600 text-lg font-bold text-white"
-        >
-          Save
-        </button>
-      </div>
-    </Sheet>
   )
 }
 

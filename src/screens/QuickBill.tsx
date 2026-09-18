@@ -270,6 +270,7 @@ export default function QuickBill() {
         </div>
         <nav className="flex justify-around pt-1">
           {[
+            ['bills', 'Bills'],
             ['khata', 'Khata'],
             ['day', 'Day'],
             ['more', 'More'],

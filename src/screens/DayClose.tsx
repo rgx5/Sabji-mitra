@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { daySummary, voidSale } from '../db/actions'
-import { Card, Sheet, StatRow, useToast } from '../components/ui'
+import { Card, StatRow, useToast } from '../components/ui'
+import { BillSheet } from '../components/BillSheet'
 import { clockTime, money, moneyShort, prettyDate, qtyLabel, shiftDate, today } from '../lib/format'
 import { go } from '../lib/router'
 import type { Sale } from '../db/types'
@@ -20,15 +21,6 @@ export default function DayClose() {
         .sort((a, b) => b.createdAt - a.createdAt),
     [date],
   )
-  const lines = useLiveQuery(async () => {
-    if (!openSale) return []
-    return (await db.saleItems.where('saleId').equals(openSale.id).toArray()).filter(
-      (l) => l.deletedAt === null,
-    )
-  }, [openSale])
-  const items = useLiveQuery(() => db.items.toArray(), [])
-  const nameOf = (id: string) => items?.find((i) => i.id === id)?.nameEn ?? 'Item'
-
   if (!s) return <div className="p-6 text-center text-slate-400">Loading…</div>
 
   const marginPctOfSales = s.totalSales > 0 ? Math.round((s.grossMargin / s.totalSales) * 100) : 0
@@ -104,9 +96,12 @@ export default function DayClose() {
       )}
 
       <Card className="mb-3">
-        <p className="px-4 pt-3 text-[13px] font-semibold tracking-wide text-slate-400 uppercase">
-          Bills
-        </p>
+        <div className="flex items-center justify-between px-4 pt-3">
+          <p className="text-[13px] font-semibold tracking-wide text-slate-400 uppercase">Bills</p>
+          <button onClick={() => go('bills')} className="min-h-0 text-[14px] font-bold text-brand-700">
+            See all ›
+          </button>
+        </div>
         {(sales ?? []).length === 0 && (
           <p className="px-4 py-6 text-center text-slate-400">No bills on this day</p>
         )}
@@ -135,41 +130,16 @@ export default function DayClose() {
         ＋ Add a purchase
       </button>
 
-      <Sheet open={openSale !== null} onClose={() => setOpenSale(null)} label="Bill">
-        {openSale && (
-          <div className="pb-safe px-4 pt-4" style={{ ['--pb' as string]: '12px' }}>
-            <p className="text-xl font-bold">Bill #{openSale.billNo}</p>
-            <p className="mb-3 text-[14px] text-slate-500">
-              {prettyDate(openSale.date)} {clockTime(openSale.createdAt)} · {openSale.paymentMode}
-            </p>
-            {(lines ?? []).map((l) => (
-              <div key={l.id} className="flex justify-between border-b border-slate-100 py-2">
-                <span className="text-[15px]">
-                  {nameOf(l.itemId)}{' '}
-                  <span className="text-slate-500">
-                    {qtyLabel(l.qty, l.unit)} × {moneyShort(l.sellRate)}
-                  </span>
-                </span>
-                <span className="font-semibold tabular-nums">{money(l.lineTotal)}</span>
-              </div>
-            ))}
-            <div className="mt-3 flex justify-between text-lg font-bold">
-              <span>Total</span>
-              <span className="tabular-nums">{money(openSale.total)}</span>
-            </div>
-            <button
-              onClick={async () => {
-                await voidSale(openSale.id)
-                setOpenSale(null)
-                toast(`Bill #${openSale.billNo} removed`)
-              }}
-              className="tap-scale mt-4 w-full rounded-2xl bg-rose-50 text-[16px] font-bold text-rose-600"
-            >
-              Remove this bill
-            </button>
-          </div>
-        )}
-      </Sheet>
+      <BillSheet
+        sale={openSale}
+        onClose={() => setOpenSale(null)}
+        onVoid={async (b) => {
+          await voidSale(b.id)
+          setOpenSale(null)
+          toast(`Bill #${b.billNo} removed`)
+        }}
+      />
+
     </div>
   )
 }

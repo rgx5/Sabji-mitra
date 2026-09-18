@@ -4,6 +4,7 @@ import { ToastHost } from './components/ui'
 import { go, useRoute } from './lib/router'
 import { db, getSettings } from './db/db'
 import QuickBill from './screens/QuickBill'
+import Bills from './screens/Bills'
 import RateBoard from './screens/RateBoard'
 import Khata from './screens/Khata'
 import CustomerDetail from './screens/CustomerDetail'
@@ -14,6 +15,7 @@ import SettingsScreen from './screens/SettingsScreen'
 const TABS = [
   { key: 'bill', label: 'Bill', icon: '🧾' },
   { key: 'rates', label: 'Rates', icon: '📋' },
+  { key: 'bills', label: 'Bills', icon: '📑' },
   { key: 'khata', label: 'Khata', icon: '📒' },
   { key: 'day', label: 'Day', icon: '📊' },
   { key: 'more', label: 'More', icon: '⚙️' },
@@ -36,6 +38,8 @@ export default function App() {
     switch (head) {
       case 'rates':
         return <RateBoard />
+      case 'bills':
+        return <Bills />
       case 'khata':
         return route.parts[1] ? <CustomerDetail customerId={route.parts[1]} /> : <Khata />
       case 'purchase':
@@ -59,12 +63,12 @@ export default function App() {
         {!hideNav && (
           <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-around border-t border-slate-200 bg-white">
             {TABS.map((t) => {
-              const active = t.key === head || (t.key === 'more' && head === 'purchase')
+              const active = t.key === head || (t.key === 'bills' && head === 'purchase')
               return (
                 <button
                   key={t.key}
                   onClick={() => go(t.key)}
-                  className={`tap-scale flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${
+                  className={`tap-scale flex flex-1 flex-col items-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold ${
                     active ? 'text-brand-700' : 'text-slate-400'
                   }`}
                 >

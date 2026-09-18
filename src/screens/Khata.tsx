@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { collectPayment } from '../db/actions'
 import { NumPad } from '../components/NumPad'
-import { CustomerPicker } from '../components/CustomerPicker'
+import { CustomerForm } from '../components/CustomerForm'
 import { EmptyState, SearchBar, useToast } from '../components/ui'
 import { money, toPaise } from '../lib/format'
 import { go } from '../lib/router'
@@ -68,7 +68,7 @@ export default function Khata() {
         <EmptyState
           icon="📒"
           title="No khata customers yet"
-          hint="They are added the first time you save an udhaar bill."
+          hint="Tap ＋ New to add one with name and phone, or save an udhaar bill."
         />
       ) : (
         <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -104,14 +104,14 @@ export default function Khata() {
 
       <CollectPad customer={collectFor} onClose={() => setCollectFor(null)} onCollect={onCollect} />
 
-      <CustomerPicker
+      <CustomerForm
         open={addOpen}
-        title="New customer"
-        onPick={(c) => {
+        onClose={() => setAddOpen(false)}
+        onSaved={(c) => {
           setAddOpen(false)
+          toast(`${c.name} added`)
           go(`khata/${c.id}`)
         }}
-        onClose={() => setAddOpen(false)}
       />
     </div>
   )

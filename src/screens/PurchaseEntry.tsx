@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
-import { addSupplier, commitPurchase, rateMapFor } from '../db/actions'
+import { addSupplier, commitPurchase, rateMapFor, updateSupplier } from '../db/actions'
 import { NumPad } from '../components/NumPad'
 import { Sheet, SearchBar, useToast } from '../components/ui'
+import { FormField } from '../components/CustomerForm'
 import {
   isWeighed,
   lineTotal,
@@ -308,7 +309,12 @@ export default function PurchaseEntry() {
 
       <SupplierPicker
         open={supplierOpen}
-        suppliers={(suppliers ?? []).map((s) => ({ id: s.id, name: s.name, balance: s.balance }))}
+        suppliers={(suppliers ?? []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          phone: s.phone,
+          balance: s.balance,
+        }))}
         onPick={(id) => {
           setSupplierId(id)
           setSupplierOpen(false)
@@ -392,16 +398,32 @@ function SupplierPicker({
   onClose,
 }: {
   open: boolean
-  suppliers: Array<{ id: string; name: string; balance: number }>
+  suppliers: Array<{ id: string; name: string; phone?: string; balance: number }>
   onPick: (id: string | null) => void
   onClose: () => void
 }) {
   const [query, setQuery] = useState('')
+  const [form, setForm] = useState<null | { id?: string; name: string; phone: string }>(null)
   const filtered = suppliers.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))
   const exact = filtered.some((s) => s.name.toLowerCase() === query.trim().toLowerCase())
 
+  const saveForm = async () => {
+    if (!form || !form.name.trim()) return
+    if (form.id) {
+      await updateSupplier(form.id, { name: form.name.trim(), phone: form.phone.trim() || undefined })
+      setForm(null)
+      onPick(form.id)
+    } else {
+      const id = await addSupplier(form.name.trim(), form.phone.trim() || undefined)
+      setForm(null)
+      setQuery('')
+      onPick(id)
+    }
+  }
+
   return (
-    <Sheet open={open} onClose={onClose} label="Supplier">
+    <>
+    <Sheet open={open && form === null} onClose={onClose} label="Supplier">
       <div className="pb-safe px-3 pt-3" style={{ ['--pb' as string]: '12px' }}>
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xl font-bold">Supplier</p>
@@ -413,10 +435,10 @@ function SupplierPicker({
         <div className="mt-3 max-h-[45vh] overflow-y-auto">
           {query.trim() && !exact && (
             <button
-              onClick={async () => onPick(await addSupplier(query.trim()))}
+              onClick={() => setForm({ name: query.trim(), phone: '' })}
               className="tap-scale mb-2 w-full rounded-2xl bg-brand-600 px-4 py-3 text-left text-[17px] font-bold text-white"
             >
-              ＋ Add “{query.trim()}”
+              ＋ Add “{query.trim()}” with phone
             </button>
           )}
           <button
@@ -426,21 +448,62 @@ function SupplierPicker({
             No supplier
           </button>
           {filtered.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => onPick(s.id)}
-              className="tap-scale flex w-full items-center justify-between border-b border-slate-100 py-3 text-left last:border-0"
-            >
-              <span className="text-[17px] font-semibold">{s.name}</span>
-              {s.balance > 0 && (
-                <span className="text-[15px] font-bold text-amber-700 tabular-nums">
-                  due {money(s.balance)}
+            <div key={s.id} className="flex items-center gap-2 border-b border-slate-100 last:border-0">
+              <button
+                onClick={() => onPick(s.id)}
+                className="tap-scale flex min-w-0 flex-1 items-center justify-between py-3 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[17px] font-semibold">{s.name}</span>
+                  <span className="block text-[13px] text-slate-500">{s.phone ?? 'No phone'}</span>
                 </span>
-              )}
-            </button>
+                {s.balance > 0 && (
+                  <span className="text-[15px] font-bold text-amber-700 tabular-nums">
+                    due {money(s.balance)}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setForm({ id: s.id, name: s.name, phone: s.phone ?? '' })}
+                aria-label={`Edit ${s.name}`}
+                className="tap-scale h-11 px-3 text-[14px] font-bold text-slate-400"
+              >
+                Edit
+              </button>
+            </div>
           ))}
         </div>
       </div>
     </Sheet>
+
+    <Sheet open={form !== null} onClose={() => setForm(null)} label="Supplier details">
+      {form && (
+        <div className="pb-safe space-y-3 px-4 pt-4" style={{ ['--pb' as string]: '12px' }}>
+          <p className="text-xl font-bold">{form.id ? 'Edit supplier' : 'New supplier'}</p>
+          <FormField
+            label="Name / नाव *"
+            value={form.name}
+            onChange={(v) => setForm({ ...form, name: v })}
+            placeholder="Mandi trader"
+            autoFocus
+          />
+          <FormField
+            label="Phone / फोन"
+            value={form.phone}
+            onChange={(v) => setForm({ ...form, phone: v })}
+            type="tel"
+            inputMode="tel"
+            placeholder="98xxxxxxxx"
+          />
+          <button
+            onClick={() => void saveForm()}
+            className="tap-scale w-full rounded-2xl bg-brand-600 text-lg font-bold text-white"
+          >
+            {form.id ? 'Save' : 'Add supplier'}
+          </button>
+        </div>
+      )}
+    </Sheet>
+    </>
   )
 }
